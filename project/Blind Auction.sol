@@ -46,9 +46,6 @@ contract BlindAuction {
 
     Phase public currentPhase = Phase.Init;
 
-    // 최소 상승폭
-    uint public bidStep = 0.1 ether;
-
     // Modifiers
     // 경매 단계별로 실행 가능한 함수 제한하는 Modifier
     modifier onlyPhase(Phase _phase) {
@@ -62,14 +59,19 @@ contract BlindAuction {
         _;
     }
 
+    // 최소 상승폭
+    uint public bidStep;
+
     uint public bidEnd;
     uint public revealEnd;
 
-    constructor(uint _bidHours, uint _revealHours) {
+    constructor(uint _bidHours, uint _revealHours, uint _bidStep) {
         beneficiary = payable(msg.sender);
 
         bidEnd = block.timestamp + (_bidHours * 1 hours);
-        revealEnd = bidEnd + (_revealHours * 1 hours);  
+        revealEnd = bidEnd + (_revealHours * 1 hours);
+
+        bidStep = _bidStep * 1 ether;
 
         emit AuctionInit();
     }
