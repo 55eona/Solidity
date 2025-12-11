@@ -188,11 +188,21 @@ contract BlindAuction {
 
     // 소유자(수혜자)에게 가장 높은 입찰가를 보내고 경매를 종료
     // Show winning bid 버튼
-    function auctionEnd() public onlyBeneficiary onlyPhase(Phase.Done) {
-        
-        if(highestBid > 0) {
+    function auctionEnd() public onlyBeneficiary {
+        // Reveal 단계 이후에만 강제 종료 허용
+        require(
+            currentPhase == Phase.Reveal || currentPhase == Phase.Done,
+            "Auction not ready to end"
+        );
+
+        // 상태를 Done으로 고정
+        currentPhase = Phase.Done;
+
+        emit AuctionEnded(highestBidder, highestBid);
+
+        if (highestBid > 0) {
             beneficiary.transfer(highestBid);
-        }         
+        }
     }
 
 
