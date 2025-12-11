@@ -23,7 +23,7 @@ contract BlindAuction {
     // 소유자
     address payable public beneficiary;
 
-    // 최고 입찰가, 입찰자
+    // 최고 입찰가, 입찰자 
     address public highestBidder;
     uint public highestBid = 0;
 
@@ -62,14 +62,16 @@ contract BlindAuction {
     // 최소 상승폭
     uint public bidStep = 0.1 ether;
 
+    uint public bidDur;
+    uint public revealDur;
     uint public bidEnd;
     uint public revealEnd;
 
     constructor(uint _bidHours, uint _revealHours) {
         beneficiary = payable(msg.sender);
 
-        bidEnd = block.timestamp + (_bidHours * 1 hours);
-        revealEnd = bidEnd + (_revealHours * 1 hours);
+        bidDur = _bidHours * 1 hours;
+        revealDur = _revealHours * 1 hours;
 
         emit AuctionInit();
     }
@@ -81,14 +83,18 @@ contract BlindAuction {
 
         if  (currentPhase == Phase.Init) { 
             currentPhase = Phase.Bidding;
+            bidEnd = block.timestamp + bidDur;
             emit BiddingStarted();
 
         } else if (currentPhase == Phase.Bidding) {
             currentPhase = Phase.Reveal;
+            bidEnd = 0;
+            revealEnd = block.timestamp + revealDur;
             emit RevealStarted();
 
         } else if (currentPhase == Phase.Reveal) {
             currentPhase = Phase.Done;
+            revealEnd = 0;
             emit AuctionEnded(highestBidder, highestBid);
 
         } else {
@@ -188,6 +194,7 @@ contract BlindAuction {
             beneficiary.transfer(highestBid);
         }         
     }
+
 
     // 낙찰되지 않은 입찰금 반환
     // withdraw 버튼
