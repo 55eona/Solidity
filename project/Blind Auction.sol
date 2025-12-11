@@ -41,7 +41,7 @@ contract BlindAuction {
 
     // 추가 이벤트
     event BidSubmitted(address bidder, bytes32 blindBid, uint amount);
-    event BidRevealed(address bidder, bytes32 secret, uint value, bool highest);
+    event BidRevealed(address bidder, bool hash, uint value, bool highest);
     event Withdrawal(address bidder, uint amount, bool highest);
 
     Phase public currentPhase = Phase.Init;
@@ -60,18 +60,16 @@ contract BlindAuction {
     }
 
     // 최소 상승폭
-    uint public bidStep;
+    uint public bidStep = 0.1 ether;
 
     uint public bidEnd;
     uint public revealEnd;
 
-    constructor(uint _bidHours, uint _revealHours, uint _bidStep) {
+    constructor(uint _bidHours, uint _revealHours) {
         beneficiary = payable(msg.sender);
 
         bidEnd = block.timestamp + (_bidHours * 1 hours);
         revealEnd = bidEnd + (_revealHours * 1 hours);
-
-        bidStep = _bidStep * 1 ether;
 
         emit AuctionInit();
     }
@@ -126,6 +124,7 @@ contract BlindAuction {
 
         uint _value = bids[msg.sender].deposit;
         bytes32 _secret = bids[msg.sender].blindBid;
+        uint amount = value * 1 ether;
 
         // 경매 참여한 입찰자만
         require(_value>0, "No bid to reveal");
@@ -136,33 +135,34 @@ contract BlindAuction {
             pendingReturns[msg.sender] += _value;
             // 같은 예치금으로 다시 시도 못하게 초기화
             bids[msg.sender].deposit = 0;
+            emit BidRevealed(msg.sender, false, amount, false);
 
         } else {
             // 예치금이 실제 입찰가 이상이라면 유효 입찰로 인정
-            if (_value >= value) {
+            if (_value >= amount) {
 
                 // 최고 입찰가 갱신
                 // 최고 입찰가 중복일 때 → 먼저 입력한 사람한테 낙찰
-                if (value > highestBid + bidStep) {
+                if (amount > highestBid + bidStep) {
 
                     // 이전 최고 입찰자에게는 입찰가만큼 돌려주기
                     if (highestBidder != address(0)) {
                         pendingReturns[highestBidder] += highestBid;
                     }
-                    highestBid = value;
+                    highestBid = amount;
                     highestBidder = msg.sender;
 
                     // 낙찰 후보자의 예치금 중 입찰가만큼은 계약에 남기고 나머지 환불
-                    pendingReturns[msg.sender] += (_value - value);
+                    pendingReturns[msg.sender] += (_value - amount);
 
-                    emit BidRevealed(msg.sender, secret, value, true);
+                    emit BidRevealed(msg.sender, true, amount, true);
 
                 } 
                 else {
                     // 최고 입찰가(+최소 상승폭)보다 작으면 전액 환불(refund=_value 그대로)
                     pendingReturns[msg.sender] += _value;
 
-                    emit BidRevealed(msg.sender, secret, value, false);
+                    emit BidRevealed(msg.sender, true, amount, false);
                 }
 
                 // 재진입 방지를 위한 초기화
@@ -174,6 +174,7 @@ contract BlindAuction {
                 pendingReturns[msg.sender] += _value;
                 // 같은 예치금으로 다시 시도 못하게 초기화
                 bids[msg.sender].deposit = 0;
+                emit BidRevealed(msg.sender, true, amount, false);
             }
         }
     }
